@@ -49,6 +49,12 @@ export class Player {
         this.frameId = this.animations[this.state].nextFrameId(deltaTime);
     }
 
+    // Y-sort key: the sprite's ground-contact ("foot") y in world space.
+    // Player sprite is centered on worldY, so feet are half a sprite below it.
+    get footY() {
+        return this.worldY + (this.spritesheet.spriteHeight * this.scale) / 2;
+    }
+
     draw(ctx, camera, screenCenterX, screenCenterY) {
         const spriteSize = this.spritesheet.spriteWidth * this.scale;
         const screenX = Math.round(this.worldX - camera.x + screenCenterX - spriteSize / 2);

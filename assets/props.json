@@ -1,0 +1,10 @@
+{
+    "oak": {
+        "atlas": "oaktree-2x1",
+        "frameId": 0,
+        "variations": 2,
+        "collider": "capsule",
+        "spriteSize": [3, 4],
+        "name": "Oak Tree"
+    }
+}

@@ -53,10 +53,12 @@ async function loadJSON(src) {
 const input = new KeyboardInputDevice();
 input.connect();
 
-const [playerImage, overworldImage, tileDefs, worldMap] = await Promise.all([
+const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap] = await Promise.all([
     loadImage('assets/sprites/entities/player-4x2.png'),
     loadImage('assets/sprites/environment/overworld-4x4.png'),
+    loadImage('assets/sprites/environment/oaktree-2x1.png'),
     loadJSON('assets/tiles.json'),
+    loadJSON('assets/props.json'),
     loadJSON('assets/maps/overworld.json'),
 ]);
 
@@ -66,10 +68,14 @@ const TILE_SCREEN = TILE_SIZE * WORLD_SCALE;
 
 const playerSheet = new Spritesheet(playerImage, 4, TILE_SIZE, TILE_SIZE);
 const overworldSheet = new Spritesheet(overworldImage, 4, TILE_SIZE, TILE_SIZE);
+// Tree sprite size is data-driven from props.json (`spriteSize` in tiles).
+const [oakW, oakH] = propDefs.oak.spriteSize.map(n => n * TILE_SIZE);
+const oakSheet = new Spritesheet(oakImage, 2, oakW, oakH);
 
-// Registry of atlases so tiles.json can reference them by name.
+// Registry of atlases so tiles.json / props.json can reference them by name.
 const atlases = {
     'overworld-4x4': overworldSheet,
+    'oaktree-2x1':   oakSheet,
 };
 
 const player = new Player(playerSheet);
@@ -114,6 +120,39 @@ function buildGroundPatch(map, defs, rng) {
 
 const groundPatch = buildGroundPatch(worldMap, tileDefs, random);
 
+// Build static prop instances from map.props. Each prop is anchored at its
+// FOOT position (bottom-center of the sprite in world space), which is what
+// gets Y-sorted against dynamic entities each frame.
+function buildProps(map, defs, rng) {
+    if (!Array.isArray(map.props)) return [];
+    const out = [];
+    for (const p of map.props) {
+        const def = defs[p.type];
+        if (!def) {
+            console.warn(`Prop "${p.type}" not found in props.json`);
+            continue;
+        }
+        const sheet = atlases[def.atlas];
+        const variations = Math.max(1, def.variations ?? 1);
+        const offset = Math.floor(rng.detUniform(0, variations - 1));
+        const [tx, ty] = p.at;
+        out.push({
+            worldX: tx * TILE_SCREEN,
+            footY:  ty * TILE_SCREEN,
+            sheet,
+            frameId: def.frameId + offset,
+        });
+    }
+    // Pre-sort by footY so per-frame rendering can merge with dynamic entities in O(N).
+    out.sort((a, b) => a.footY - b.footY);
+    return out;
+}
+
+const props = buildProps(worldMap, propDefs, random);
+
+// Dynamic entities are re-sorted each frame. Kept small on purpose — grow as needed.
+const entities = [player];
+
 const camera = { x: 0, y: 0 };
 
 function drawWorld() {
@@ -128,6 +167,35 @@ function drawWorld() {
     }
 }
 
+function drawProp(prop, cx, cy) {
+    const sw = prop.sheet.spriteWidth * WORLD_SCALE;
+    const sh = prop.sheet.spriteHeight * WORLD_SCALE;
+    // Prop is anchored at foot (bottom-center) in world space.
+    const sx = Math.round(prop.worldX - camera.x + cx - sw / 2);
+    const sy = Math.round(prop.footY  - camera.y + cy - sh);
+    prop.sheet.draw(entityCtx, prop.frameId, sx, sy, WORLD_SCALE);
+}
+
+function drawEntities() {
+    prepareCtx(entityCtx);
+    entityCtx.clearRect(0, 0, entityCanvas.clientWidth, entityCanvas.clientHeight);
+
+    const cx = entityCanvas.clientWidth / 2;
+    const cy = entityCanvas.clientHeight / 2;
+
+    // Sort just the small dynamic-entity list, then merge with the pre-sorted
+    // static props. O(N) per frame in total (N = props + entities visible).
+    entities.sort((a, b) => a.footY - b.footY);
+
+    let i = 0, j = 0;
+    while (i < props.length && j < entities.length) {
+        if (props[i].footY <= entities[j].footY) drawProp(props[i++], cx, cy);
+        else entities[j++].draw(entityCtx, camera, cx, cy);
+    }
+    while (i < props.length)   drawProp(props[i++], cx, cy);
+    while (j < entities.length) entities[j++].draw(entityCtx, camera, cx, cy);
+}
+
 let last = performance.now();
 function frame(now) {
     const dt = now - last;
@@ -139,10 +207,7 @@ function frame(now) {
 
     // Player is fixed at screen center; world scrolls opposite.
     drawWorld();
-
-    prepareCtx(entityCtx);
-    entityCtx.clearRect(0, 0, entityCanvas.clientWidth, entityCanvas.clientHeight);
-    player.draw(entityCtx, camera, entityCanvas.clientWidth / 2, entityCanvas.clientHeight / 2);
+    drawEntities();
 
     requestAnimationFrame(frame);
 }
