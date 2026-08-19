@@ -1,27 +1,27 @@
 {
     "name": "Overworld",
     "bounds": {
-        "minX": -1,
-        "maxX": 2,
-        "minY": -1,
-        "maxY": 1
+        "minX": -20,
+        "maxX": 20,
+        "minY": -20,
+        "maxY": 20
     },
-    "palette": [
-        "grass",
-        "water",
-        "cobblestone"
+    "patches": [
+        { "type": "rect",    "tile": "grass", "points": [[-10, -10], [-6, -6]] },
+        { "type": "rect",    "tile": "grass", "points": [[-4, -10], [ 0, -6]], "thickness": 1 },
+
+        { "type": "circle",  "tile": "grass", "points": [[ 5, -8]], "radius": 3 },
+        { "type": "circle",  "tile": "grass", "points": [[ 5, -1]], "radius": 3, "thickness": 1 },
+
+        { "type": "line",    "tile": "grass", "points": [[-10, 0], [-6, 6], [-2, 3]], "thickness": 2 },
+        { "type": "line",    "tile": "grass", "points": [[-10, 0], [-10, 6]], "thickness": 1 },
+
+        { "type": "line",    "tile": "grass", "points": [[-10, 8], [-6, 12], [-2, 8]], "closed": true },
+        { "type": "line",    "tile": "grass", "points": [[ 2, 6], [ 6, 6], [ 6, 12], [ 2, 12]], "closed": true, "thickness": 1 },
+
+        { "type": "bezier",  "tile": "grass", "points": [[8, -4], [14, -4], [14, 4], [8, 4]], "thickness": 1 }
     ],
     "tiles": {
-        "-1,-1": 0,
-        "0,-1": 0,
-        "1,-1": 0,
-        "-1,0": 0,
-        "0,0": 2,
-        "1,0": 2,
-        "2,0": 2,
-        "3,0": 2,
-        "-1,1": 0,
-        "0,1": 0,
-        "1,1": 0
+        "0,0": "grass"
     }
 }

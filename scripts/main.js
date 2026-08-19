@@ -4,6 +4,7 @@ import { Store } from './data/Store.js';
 import { Random } from './Random.js';
 import { Spritesheet } from './animation/Spritesheet.js';
 import { KeyboardInputDevice } from './input/KeyboardInputDevice.js';
+import { rasterize } from './world/Patches.js';
 
 console.log(
     '\n ------------------------',
@@ -71,10 +72,23 @@ const player = new Player(playerSheet);
 // Variations are sampled deterministically at load time using Random.detUniform,
 // so a given seed always produces the same layout but tiles don't flicker.
 function buildGroundPatch(map, defs, rng) {
+    // Rasterize all patches into a "x,y" → tileName cell map.
+    // String keys are used because JS objects coerce keys to strings and Map
+    // with array keys uses reference equality — neither works for tuple keys.
+    const cells = new Map();
+    const write = (x, y, name) => cells.set(`${x},${y}`, name);
+
+    if (Array.isArray(map.patches)) {
+        for (const p of map.patches) rasterize(p, write);
+    }
+    // Per-tile overrides win over patches.
+    if (map.tiles) {
+        for (const [key, name] of Object.entries(map.tiles)) cells.set(key, name);
+    }
+
     const patch = [];
-    for (const [key, paletteIndex] of Object.entries(map.tiles)) {
+    for (const [key, name] of cells) {
         const [tx, ty] = key.split(',').map(Number);
-        const name = map.palette[paletteIndex];
         const def = defs[name];
         if (!def) {
             console.warn(`Tile "${name}" not found in tiles.json`);
