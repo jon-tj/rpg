@@ -1,0 +1,23 @@
+{
+    "grass": {
+        "atlas": "overworld-4x4",
+        "frameId": 0,
+        "variations": 2,
+        "collider": null,
+        "name": "Grass"
+    },
+    "water": {
+        "atlas": "overworld-4x4",
+        "frameId": 4,
+        "variations": 1,
+        "collider": null,
+        "name": "Water"
+    },
+    "cobblestone": {
+        "atlas": "overworld-4x4",
+        "frameId": 2,
+        "variations": 2,
+        "collider": null,
+        "name": "Cobblestone"
+    }
+}
