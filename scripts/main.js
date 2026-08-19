@@ -120,9 +120,11 @@ function buildGroundPatch(map, defs, rng) {
 
 const groundPatch = buildGroundPatch(worldMap, tileDefs, random);
 
-// Build static prop instances from map.props. Each prop is anchored at its
-// FOOT position (bottom-center of the sprite in world space), which is what
-// gets Y-sorted against dynamic entities each frame.
+// Build static prop instances from map.props. Each entry groups multiple
+// instances of the same prop type via a `points` array, matching the patch
+// schema convention. Every prop is anchored at its FOOT position
+// (bottom-center of the sprite in world space), which is what gets Y-sorted
+// against dynamic entities each frame.
 function buildProps(map, defs, rng) {
     if (!Array.isArray(map.props)) return [];
     const out = [];
@@ -134,14 +136,15 @@ function buildProps(map, defs, rng) {
         }
         const sheet = atlases[def.atlas];
         const variations = Math.max(1, def.variations ?? 1);
-        const offset = Math.floor(rng.detUniform(0, variations - 1));
-        const [tx, ty] = p.at;
-        out.push({
-            worldX: tx * TILE_SCREEN,
-            footY:  ty * TILE_SCREEN,
-            sheet,
-            frameId: def.frameId + offset,
-        });
+        for (const [tx, ty] of p.points) {
+            const offset = Math.floor(rng.detUniform(0, variations - 1));
+            out.push({
+                worldX: tx * TILE_SCREEN,
+                footY:  ty * TILE_SCREEN,
+                sheet,
+                frameId: def.frameId + offset,
+            });
+        }
     }
     // Pre-sort by footY so per-frame rendering can merge with dynamic entities in O(N).
     out.sort((a, b) => a.footY - b.footY);

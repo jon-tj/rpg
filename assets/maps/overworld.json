@@ -1,30 +1,40 @@
 {
     "name": "Overworld",
     "bounds": {
-        "minX": -20,
-        "maxX": 20,
-        "minY": -20,
-        "maxY": 20
+        "minX": -45,
+        "maxX": 45,
+        "minY": -25,
+        "maxY": 25
     },
     "patches": [
-        { "type": "rect",    "tile": "grass", "points": [[-10, -10], [-6, -6]] },
-        { "type": "rect",    "tile": "grass", "points": [[-4, -10], [ 0, -6]], "thickness": 1 },
+        { "type": "rect", "tile": "grass",       "points": [[-45, -25], [45, 25]] },
 
-        { "type": "circle",  "tile": "grass", "points": [[ 5, -8]], "radius": 3 },
-        { "type": "circle",  "tile": "grass", "points": [[ 5, -1]], "radius": 3, "thickness": 1 },
+        { "type": "rect", "tile": "dirt",        "points": [[-22, -5], [-12,  5]] },
+        { "type": "rect", "tile": "dirt",        "points": [[ 32, -15], [42, -5]] },
 
-        { "type": "line",    "tile": "grass", "points": [[-10, 0], [-6, 6], [-2, 3]], "thickness": 2 },
-        { "type": "line",    "tile": "grass", "points": [[-10, 0], [-10, 6]], "thickness": 1 },
+        { "type": "line", "tile": "cobblestone",
+          "points": [[-12, 0], [-4, 3], [5, -2], [14, -2], [24, -8], [32, -10]],
+          "thickness": 3 },
 
-        { "type": "line",    "tile": "grass", "points": [[-10, 8], [-6, 12], [-2, 8]], "closed": true },
-        { "type": "line",    "tile": "grass", "points": [[ 2, 6], [ 6, 6], [ 6, 12], [ 2, 12]], "closed": true, "thickness": 1 },
+        { "type": "bezier", "tile": "water",
+          "points": [
+            [12, -25], [18, -18], [ 2, -10],
+            [10,  -2], [18,   6], [ 2,  14],
+            [10,  25]
+          ],
+          "thickness": 3 },
 
-        { "type": "bezier",  "tile": "grass", "points": [[8, -4], [14, -4], [14, 4], [8, 4]], "thickness": 1 }
+        { "type": "rect", "tile": "wood",        "points": [[8, -3], [13, -1]] }
     ],
-    "tiles": {
-        "0,0": "grass"
-    },
     "props": [
-        { "type": "oak", "at": [-10, 0] }
+        { "type": "oak", "points": [
+            [-30, -18], [-28,  15], [ -8, -18], [ -3,  18], [ -2,  7], [ -1,  -0.5], [ 6,  -4], [ 15,  -7],[ 11,  -5.5],
+            [ 18,  14], [ 25,  10], [ 40, -22], [ 43,  10],
+
+            [ -8,  -4], [ -8,   6], [  2,   5],
+            [ 20, -12], [ 28,  -4], [ 35,  -3]
+        ] }
     ]
 }
+
+

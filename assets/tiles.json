@@ -19,5 +19,19 @@
         "variations": 2,
         "collider": null,
         "name": "Cobblestone"
+    },
+    "dirt": {
+        "atlas": "overworld-4x4",
+        "frameId": 8,
+        "variations": 2,
+        "collider": null,
+        "name": "Dirt"
+    },
+    "wood": {
+        "atlas": "overworld-4x4",
+        "frameId": 10,
+        "variations": 1,
+        "collider": null,
+        "name": "Wood Planks"
     }
 }
