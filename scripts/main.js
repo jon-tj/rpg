@@ -23,11 +23,17 @@ const random = new Random(gameState.world.seed);
 // World/floor on layer 0, entities on layer 1.
 const worldCanvas = document.querySelector('canvas.layer[data-layer-id="0"]');
 const worldCtx = worldCanvas.getContext('2d');
-worldCtx.imageSmoothingEnabled = false;
 
 const entityCanvas = document.querySelector('canvas.layer[data-layer-id="1"]');
 const entityCtx = entityCanvas.getContext('2d');
-entityCtx.imageSmoothingEnabled = false;
+
+// Re-applies the DPR transform + disables smoothing on a context.
+// Must run each frame because changing canvas.width/height on resize resets both.
+function prepareCtx(ctx) {
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+}
 
 function loadImage(src) {
     return new Promise((resolve, reject) => {
@@ -111,9 +117,10 @@ const groundPatch = buildGroundPatch(worldMap, tileDefs, random);
 const camera = { x: 0, y: 0 };
 
 function drawWorld() {
-    const cx = worldCanvas.width / 2;
-    const cy = worldCanvas.height / 2;
-    worldCtx.clearRect(0, 0, worldCanvas.width, worldCanvas.height);
+    prepareCtx(worldCtx);
+    const cx = worldCanvas.clientWidth / 2;
+    const cy = worldCanvas.clientHeight / 2;
+    worldCtx.clearRect(0, 0, worldCanvas.clientWidth, worldCanvas.clientHeight);
     for (const t of groundPatch) {
         const sx = Math.round(t.tx * TILE_SCREEN - camera.x + cx);
         const sy = Math.round(t.ty * TILE_SCREEN - camera.y + cy);
@@ -133,8 +140,9 @@ function frame(now) {
     // Player is fixed at screen center; world scrolls opposite.
     drawWorld();
 
-    entityCtx.clearRect(0, 0, entityCanvas.width, entityCanvas.height);
-    player.draw(entityCtx, camera, entityCanvas.width / 2, entityCanvas.height / 2);
+    prepareCtx(entityCtx);
+    entityCtx.clearRect(0, 0, entityCanvas.clientWidth, entityCanvas.clientHeight);
+    player.draw(entityCtx, camera, entityCanvas.clientWidth / 2, entityCanvas.clientHeight / 2);
 
     requestAnimationFrame(frame);
 }
