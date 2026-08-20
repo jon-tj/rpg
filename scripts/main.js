@@ -1,4 +1,4 @@
-import { Renderer } from './renderer.js';
+import { Renderer } from './Renderer.js';
 import { Player } from './entities/Player.js';
 import { Store } from './data/Store.js';
 import { Random } from './Random.js';
