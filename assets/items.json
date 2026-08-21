@@ -3,8 +3,7 @@
         "name": "Map",
         "icon": "map",
         "description": "A map of the terrain.",
-        "stackable": false,
-        "maxStack": 1,
+        "maxCarried": 1,
         "useAction": "toggleMap"
     }
 }

@@ -8,6 +8,7 @@ export class Dialog {
         this.npc = null;          // the NPC we're talking to
         this.filteredOptions = [];
         this.onReceive = null;    // callback(itemId, quantity) for received items
+        this.onClose = null;      // callback() once the conversation ends
 
         // Build DOM
         this.overlay = document.createElement('div');
@@ -59,11 +60,11 @@ export class Dialog {
         if (this.textIndex < this.currentNode.text.length) {
             this._renderText();
         } else {
-            // Text exhausted — follow next or show options.
-            if (this.currentNode.next != null) {
-                this._goToNode(this.currentNode.next);
-            } else if (this.currentNode.options && this.currentNode.options.length > 0) {
+            // Text exhausted — options take precedence over next.
+            if (this.currentNode.options && this.currentNode.options.length > 0) {
                 this._showOptions();
+            } else if (this.currentNode.next != null) {
+                this._goToNode(this.currentNode.next);
             } else {
                 this.close();
             }
@@ -97,25 +98,61 @@ export class Dialog {
         this.overlay.style.display = 'none';
         this.optionsContainer.innerHTML = '';
         this.npc = null;
+        // Everything the conversation changed is persisted in one go, so a
+        // reload mid-dialog leaves the previous save intact.
+        if (this.onClose) this.onClose();
     }
 
     // --- internals ---
 
     _goToNode(id) {
-        this.currentNode = this.nodes.find(n => n.id === id);
-        if (!this.currentNode) {
-            console.warn(`Dialog node id=${id} not found`);
-            this.close();
+        // A node whose visit allowance is spent is skipped, following `next`
+        // directly. `seen` guards against cycles in exhausted chains.
+        const seen = new Set();
+        let nodeId = id;
+
+        while (nodeId != null) {
+            if (seen.has(nodeId)) {
+                console.warn(`Dialog cycle detected at node id=${nodeId}`);
+                break;
+            }
+            seen.add(nodeId);
+
+            const node = this.nodes.find(n => n.id === nodeId);
+            if (!node) {
+                console.warn(`Dialog node id=${nodeId} not found`);
+                break;
+            }
+
+            // null/undefined maxVisitNodeTimes means unlimited visits.
+            const maxVisits = node.maxVisitNodeTimes ?? null;
+            if (maxVisits != null) {
+                // Node ids restart at 0 per dialog tree, so scope the key by category.
+                const visitKey = `${this.npc.dialogCategory} ${nodeId}`;
+                if (this.npc.getVisitCount(visitKey) >= maxVisits) {
+                    nodeId = node.next ?? null;
+                    continue;
+                }
+                // Only capped nodes need a persisted count.
+                this.npc.incrementVisitCount(visitKey);
+            }
+
+            this._enterNode(node);
             return;
         }
+
+        this.close();
+    }
+
+    _enterNode(node) {
+        this.currentNode = node;
         this.textIndex = 0;
         this.phase = 'text';
         this.optionsContainer.innerHTML = '';
         this.optionsContainer.style.display = 'none';
 
-        // Deliver received items when entering the node
-        if (this.currentNode.receive && this.onReceive) {
-            for (const r of this.currentNode.receive) {
+        if (node.receive && this.onReceive) {
+            for (const r of node.receive) {
                 this.onReceive(r.item, r.quantity ?? 1);
             }
         }
@@ -129,16 +166,10 @@ export class Dialog {
         this.text.style.display = '';
 
         const lastTextPage = this.textIndex >= this.currentNode.text.length - 1;
-        const hasNext = this.currentNode.next != null;
         const hasOptions = this.currentNode.options && this.currentNode.options.length > 0;
+        const hasNext = this.currentNode.next != null;
 
-        if (!lastTextPage || hasNext) {
-            this.hint.textContent = 'E ▶';
-        } else if (hasOptions) {
-            this.hint.textContent = 'E ▶';
-        } else {
-            this.hint.textContent = 'E ✕';
-        }
+        this.hint.textContent = (!lastTextPage || hasOptions || hasNext) ? 'E ▶' : 'E ✕';
     }
 
     _showOptions() {

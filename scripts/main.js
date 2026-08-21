@@ -85,7 +85,8 @@ const atlases = {
 
 const player = new Player(playerSheet);
 
-const npc = new NPC(playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, haraldDialog, 'on the road');
+const npc = new NPC('harald', playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, haraldDialog, 'on the road');
+npc.deserialize(gameState.npcs?.[npc.id]);
 
 const gameContainer = document.getElementById('game-container');
 const dialog = new Dialog(gameContainer);
@@ -185,11 +186,12 @@ const props = buildProps(worldMap, propDefs, random);
 // Connect dialog item receiving to inventory
 dialog.onReceive = (itemId, quantity) => {
     inventory.addItem(itemId, quantity);
-    saveState();
 };
+dialog.onClose = () => saveState();
 
 function saveState() {
     gameState.inventory = inventory.serialize();
+    gameState.npcs = { ...gameState.npcs, [npc.id]: npc.serialize() };
     store.saveGameState();
 }
 
@@ -280,7 +282,9 @@ function frame(now) {
     if (input.state.optionSelect >= 0) {
         const idx = input.state.optionSelect;
         input.state.optionSelect = -1;
-        if (dialog.active) dialog.selectOption(idx);
+        if (dialog.active) {
+            dialog.selectOption(idx);
+        }
     }
 
     // Show/hide interaction icon

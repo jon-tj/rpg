@@ -14,7 +14,8 @@
                     "quantity": 1
                 }
             ],
-            "next": null,
+            "maxVisitNodeTimes": 1,
+            "next": 1,
             "options": [
                 {
                     "text": "Thank you, Harald. I will be careful.",
@@ -34,6 +35,16 @@
                     }
                 }
             ]
+        },
+        {
+            "id": 1,
+            "speaker": "Harald",
+            "text": [
+                "Remember, the journey is not just about reaching your destination, but also about the experiences you have along the way.",
+                "Stay safe and good luck!"
+            ],
+            "next": null,
+            "options": []
         }
     ]
 }

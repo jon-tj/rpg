@@ -1,7 +1,8 @@
 import { SheetAnimation } from '../animation/SheetAnimation.js';
 
 export class NPC {
-    constructor(spritesheet, worldX, worldY, dialogData = null, dialogCategory = null) {
+    constructor(id, spritesheet, worldX, worldY, dialogData = null, dialogCategory = null) {
+        this.id = id;
         this.spritesheet = spritesheet;
 
         this.animations = {
@@ -17,6 +18,7 @@ export class NPC {
         this.dialogData = dialogData;         // full JSON object
         this.dialogCategory = dialogCategory; // active category key
         this.karma = {};                      // { npcName: number }
+        this.visitCounts = {};                // { "<category> <nodeId>": number }
         this.interactionRadius = 80;
     }
 
@@ -46,6 +48,27 @@ export class NPC {
 
     addKarma(name, delta) {
         this.karma[name] = (this.karma[name] ?? 0) + delta;
+    }
+
+    getVisitCount(visitKey) {
+        return this.visitCounts[visitKey] ?? 0;
+    }
+
+    incrementVisitCount(visitKey) {
+        this.visitCounts[visitKey] = this.getVisitCount(visitKey) + 1;
+    }
+
+    serialize() {
+        return {
+            karma: { ...this.karma },
+            visitCounts: { ...this.visitCounts },
+        };
+    }
+
+    deserialize(data) {
+        if (!data) return;
+        this.karma = { ...data.karma };
+        this.visitCounts = { ...data.visitCounts };
     }
 
     draw(ctx, camera, screenCenterX, screenCenterY) {

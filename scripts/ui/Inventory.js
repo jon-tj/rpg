@@ -78,18 +78,28 @@ export class Inventory {
         const def = this.itemDefs[itemId];
         if (!def) { console.warn(`Unknown item: ${itemId}`); return quantity; }
 
-        let remaining = quantity;
-        const maxStack = def.maxStack ?? (def.stackable ? 64 : 1);
+        const maxStack = def.maxStack ?? 1;
 
-        // First pass: stack into existing slots of the same item
-        if (def.stackable !== false) {
-            for (let i = 0; i < this.slots.length && remaining > 0; i++) {
-                const s = this.slots[i];
-                if (s && s.itemId === itemId && s.quantity < maxStack) {
-                    const add = Math.min(remaining, maxStack - s.quantity);
-                    s.quantity += add;
-                    remaining -= add;
-                }
+        // Clamp against how many of this item may be carried in total.
+        let remaining = quantity;
+        if (def.maxCarried != null) {
+            const room = def.maxCarried - this.countItem(itemId);
+            if (room < quantity) {
+                console.warn(
+                    `Cannot exceed maxCarried limit for "${itemId}" (${def.maxCarried}).`,
+                );
+                remaining = Math.max(0, room);
+            }
+        }
+        const rejected = quantity - remaining;
+
+        // First pass: top up existing stacks of the same item.
+        for (let i = 0; i < this.slots.length && remaining > 0; i++) {
+            const s = this.slots[i];
+            if (s && s.itemId === itemId && s.quantity < maxStack) {
+                const add = Math.min(remaining, maxStack - s.quantity);
+                s.quantity += add;
+                remaining -= add;
             }
         }
 
@@ -103,7 +113,7 @@ export class Inventory {
         }
 
         if (this.visible) this._renderSlots();
-        return remaining;
+        return remaining + rejected;
     }
 
     removeItem(itemId, quantity = 1) {
