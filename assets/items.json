@@ -5,5 +5,11 @@
         "description": "A map of the terrain.",
         "maxCarried": 1,
         "useAction": "toggleMap"
+    },
+    "sword": {
+        "name": "Sword",
+        "icon": "hardware",
+        "description": "A well-worn blade.",
+        "maxCarried": 1
     }
 }

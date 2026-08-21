@@ -1,6 +1,6 @@
 export class Store {
-    static storageKey = 'rpg-game-state.v3';
-    static version = 3;
+    static storageKey = 'rpg-game-state.v4';
+    static version = 4;
 
     constructor() {
         // Default game state structure
@@ -18,7 +18,8 @@ export class Store {
                 "rows": 4,
                 "slots": []
             },
-            "npcs": {}
+            "npcs": {},
+            "chests": {}
         };
     }
 

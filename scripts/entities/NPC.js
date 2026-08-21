@@ -20,6 +20,8 @@ export class NPC {
         this.karma = {};                      // { npcName: number }
         this.visitCounts = {};                // { "<category> <nodeId>": number }
         this.interactionRadius = 80;
+        this.interactIcon = 'chat_bubble';
+        this.onInteract = null;
     }
 
     update(dt) {

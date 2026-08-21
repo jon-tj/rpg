@@ -1,41 +1,41 @@
+// Registry of live inventories so a drop can resolve the drag back to its
+// source panel — the event only carries the source inventory's id.
+const registry = new Map();
+
 export class Inventory {
     /**
-     * @param {HTMLElement} container - DOM parent to attach the inventory UI to.
+     * @param {HTMLElement} container - DOM parent to attach the panel to.
      * @param {object} itemDefs - Item definitions keyed by itemId.
      * @param {number} cols - Grid columns.
      * @param {number} rows - Grid rows.
-     * @param {Function} onUseItem - Callback(itemId, useAction) when a use-key is pressed.
+     * @param {object} options - { id, title, onUseItem }.
      */
-    constructor(container, itemDefs, cols = 4, rows = 4, onUseItem = null) {
+    constructor(container, itemDefs, cols = 4, rows = 4, options = {}) {
+        this.id = options.id ?? 'inventory';
         this.itemDefs = itemDefs;
         this.cols = cols;
         this.rows = rows;
         this.slots = new Array(cols * rows).fill(null); // each: { itemId, quantity } | null
         this.visible = false;
-        this.onUseItem = onUseItem;
+        this.onUseItem = options.onUseItem ?? null;
 
-        // Drag state
-        this._dragFrom = -1;
+        registry.set(this.id, this);
 
         // Build DOM
-        this.overlay = document.createElement('div');
-        this.overlay.id = 'inventory-overlay';
-        this.overlay.style.display = 'none';
-
         this.panel = document.createElement('div');
-        this.panel.id = 'inventory-panel';
+        this.panel.className = 'inventory-panel';
+        this.panel.style.display = 'none';
 
-        this.title = document.createElement('div');
-        this.title.id = 'inventory-title';
-        this.title.textContent = 'Inventory';
+        this.titleEl = document.createElement('div');
+        this.titleEl.className = 'inventory-title';
+        this.titleEl.textContent = options.title ?? 'Inventory';
 
         this.grid = document.createElement('div');
-        this.grid.id = 'inventory-grid';
+        this.grid.className = 'inventory-grid';
 
-        this.panel.appendChild(this.title);
+        this.panel.appendChild(this.titleEl);
         this.panel.appendChild(this.grid);
-        this.overlay.appendChild(this.panel);
-        container.appendChild(this.overlay);
+        container.appendChild(this.panel);
 
         this._buildGrid();
     }
@@ -55,20 +55,19 @@ export class Inventory {
     }
 
     toggle() {
-        this.visible = !this.visible;
-        this.overlay.style.display = this.visible ? '' : 'none';
-        if (this.visible) this._renderSlots();
+        if (this.visible) this.close();
+        else this.open();
     }
 
     open() {
         this.visible = true;
-        this.overlay.style.display = '';
+        this.panel.style.display = '';
         this._renderSlots();
     }
 
     close() {
         this.visible = false;
-        this.overlay.style.display = 'none';
+        this.panel.style.display = 'none';
     }
 
     /**
@@ -193,7 +192,7 @@ export class Inventory {
             el.addEventListener('dragstart', (e) => this._onDragStart(e, i));
             el.addEventListener('dragover', (e) => e.preventDefault());
             el.addEventListener('drop', (e) => this._onDrop(e, i));
-            el.addEventListener('dragend', () => this._onDragEnd());
+            el.addEventListener('dragend', () => this._onDragEnd(i));
 
             this._slotEls.push(el);
             this.grid.appendChild(el);
@@ -219,27 +218,65 @@ export class Inventory {
         }
     }
 
+    /** True if `quantity` more of `itemId` fits without breaking maxCarried. */
+    _canAccept(itemId, quantity, ignoreIndex = -1) {
+        const def = this.itemDefs[itemId];
+        if (!def || def.maxCarried == null) return true;
+        let count = 0;
+        for (let i = 0; i < this.slots.length; i++) {
+            if (i === ignoreIndex) continue;
+            const s = this.slots[i];
+            if (s && s.itemId === itemId) count += s.quantity;
+        }
+        return count + quantity <= def.maxCarried;
+    }
+
     _onDragStart(e, index) {
         if (!this.slots[index]) { e.preventDefault(); return; }
-        this._dragFrom = index;
         e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ inv: this.id, index }));
         this._slotEls[index].classList.add('dragging');
     }
 
     _onDrop(e, toIndex) {
         e.preventDefault();
-        if (this._dragFrom < 0 || this._dragFrom === toIndex) return;
-        // Swap slots
-        const tmp = this.slots[toIndex];
-        this.slots[toIndex] = this.slots[this._dragFrom];
-        this.slots[this._dragFrom] = tmp;
+
+        let payload;
+        try {
+            payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+        } catch {
+            return;
+        }
+        const source = registry.get(payload?.inv);
+        const fromIndex = payload?.index;
+        if (!source || fromIndex == null) return;
+        if (source === this && fromIndex === toIndex) return;
+
+        const moving = source.slots[fromIndex];
+        const displaced = this.slots[toIndex];
+        if (!moving) return;
+
+        // Swapping within one panel can't change totals; only crossing panels
+        // can push an inventory past an item's maxCarried limit.
+        if (source !== this) {
+            if (!this._canAccept(moving.itemId, moving.quantity, toIndex)) {
+                console.warn(`Cannot exceed maxCarried limit for "${moving.itemId}".`);
+                return;
+            }
+            if (displaced && !source._canAccept(displaced.itemId, displaced.quantity, fromIndex)) {
+                console.warn(`Cannot exceed maxCarried limit for "${displaced.itemId}".`);
+                return;
+            }
+        }
+
+        this.slots[toIndex] = moving;
+        source.slots[fromIndex] = displaced;
+
         this._renderSlots();
+        if (source !== this) source._renderSlots();
     }
 
-    _onDragEnd() {
-        if (this._dragFrom >= 0) {
-            this._slotEls[this._dragFrom].classList.remove('dragging');
-        }
-        this._dragFrom = -1;
+    _onDragEnd(index) {
+        this._slotEls[index].classList.remove('dragging');
     }
 }

@@ -1,6 +1,7 @@
 import { Renderer } from './Renderer.js';
 import { Player } from './entities/Player.js';
 import { NPC } from './entities/NPC.js';
+import { Chest } from './entities/Chest.js';
 import { Store } from './data/Store.js';
 import { Random } from './Random.js';
 import { Spritesheet } from './animation/Spritesheet.js';
@@ -91,6 +92,8 @@ npc.deserialize(gameState.npcs?.[npc.id]);
 const gameContainer = document.getElementById('game-container');
 const dialog = new Dialog(gameContainer);
 const interactIcon = document.getElementById('interact-icon');
+const interactIconGlyph = interactIcon.querySelector('.material-icons');
+const uiOverlay = document.getElementById('ui-overlay');
 
 // Item use-action handlers
 const useActions = {
@@ -99,10 +102,14 @@ const useActions = {
     },
 };
 
-const inventory = new Inventory(gameContainer, itemDefs, 4, 4, (itemId, action) => {
-    const handler = useActions[action];
-    if (handler) handler(itemId);
-    else console.warn(`No handler for useAction: ${action}`);
+const inventory = new Inventory(uiOverlay, itemDefs, 4, 4, {
+    id: 'player',
+    title: 'Inventory',
+    onUseItem: (itemId, action) => {
+        const handler = useActions[action];
+        if (handler) handler(itemId);
+        else console.warn(`No handler for useAction: ${action}`);
+    },
 });
 
 // Restore inventory from saved state
@@ -155,7 +162,9 @@ const groundPatch = buildGroundPatch(worldMap, tileDefs, random);
 // schema convention. Every prop is anchored at its FOOT position
 // (bottom-center of the sprite in world space), which is what gets Y-sorted
 // against dynamic entities each frame.
-function buildProps(map, defs, rng) {
+// Props whose definition declares a `container` become interactive Chest
+// entities instead of static sprites, and are collected into `chestsOut`.
+function buildProps(map, defs, rng, chestsOut) {
     if (!Array.isArray(map.props)) return [];
     const out = [];
     for (const p of map.props) {
@@ -168,12 +177,14 @@ function buildProps(map, defs, rng) {
         const variations = Math.max(1, def.variations ?? 1);
         for (const [tx, ty] of p.points) {
             const offset = Math.floor(rng.detUniform(0, variations - 1));
-            out.push({
-                worldX: tx * TILE_SCREEN,
-                footY:  ty * TILE_SCREEN,
-                sheet,
-                frameId: def.frameId + offset,
-            });
+            const worldX = tx * TILE_SCREEN;
+            const footY = ty * TILE_SCREEN;
+
+            if (def.container) {
+                chestsOut.push(buildChest(p, def, sheet, tx, ty, worldX, footY));
+                continue;
+            }
+            out.push({ worldX, footY, sheet, frameId: def.frameId + offset });
         }
     }
     // Pre-sort by footY so per-frame rendering can merge with dynamic entities in O(N).
@@ -181,7 +192,28 @@ function buildProps(map, defs, rng) {
     return out;
 }
 
-const props = buildProps(worldMap, propDefs, random);
+// Chest ids are derived from map coordinates so saved contents survive reloads.
+function buildChest(mapEntry, def, sheet, tx, ty, worldX, footY) {
+    const id = `${mapEntry.type}@${tx},${ty}`;
+    const chestInventory = new Inventory(
+        uiOverlay, itemDefs, def.container.cols, def.container.rows,
+        { id, title: def.name ?? 'Container' },
+    );
+
+    const saved = gameState.chests?.[id];
+    if (saved) {
+        chestInventory.deserialize(saved);
+    } else {
+        for (const c of mapEntry.contains ?? []) {
+            chestInventory.addItem(c.item, c.quantity ?? 1);
+        }
+    }
+
+    return new Chest(id, sheet, def.frameId, worldX, footY, chestInventory);
+}
+
+const chests = [];
+const props = buildProps(worldMap, propDefs, random, chests);
 
 // Connect dialog item receiving to inventory
 dialog.onReceive = (itemId, quantity) => {
@@ -192,11 +224,43 @@ dialog.onClose = () => saveState();
 function saveState() {
     gameState.inventory = inventory.serialize();
     gameState.npcs = { ...gameState.npcs, [npc.id]: npc.serialize() };
+    gameState.chests = { ...gameState.chests };
+    for (const c of chests) gameState.chests[c.id] = c.inventory.serialize();
     store.saveGameState();
 }
 
 // Dynamic entities are re-sorted each frame. Kept small on purpose — grow as needed.
-const entities = [player, npc];
+const entities = [player, npc, ...chests];
+
+// Everything the player can trigger with E, checked nearest-first each frame.
+const interactables = [npc, ...chests];
+
+npc.onInteract = () => {
+    const nodes = npc.getDialogNodes();
+    if (nodes) dialog.open(nodes, npc, 0);
+};
+for (const chest of chests) {
+    chest.onInteract = () => {
+        chest.inventory.open();
+        inventory.open();
+        syncOverlay();
+    };
+}
+
+function anyPanelOpen() {
+    return inventory.visible || chests.some(c => c.inventory.visible);
+}
+
+function syncOverlay() {
+    uiOverlay.style.display = anyPanelOpen() ? '' : 'none';
+}
+
+function closePanels() {
+    inventory.close();
+    for (const c of chests) c.inventory.close();
+    syncOverlay();
+    saveState();
+}
 
 const camera = { x: 0, y: 0 };
 
@@ -249,32 +313,37 @@ function frame(now) {
     player.update(dt, input.state);
     npc.update(dt);
 
-    // Handle I — toggle inventory
+    // Handle I — toggle inventory (also dismisses an open container)
     if (input.state.inventory) {
         input.state.inventory = false;
         if (!dialog.active) {
-            inventory.toggle();
-            if (!inventory.visible) saveState();
+            if (anyPanelOpen()) {
+                closePanels();
+            } else {
+                inventory.open();
+                syncOverlay();
+            }
         }
     }
 
     // Handle M — toggle map, gated on holding an item that grants the action
     if (input.state.toggleMap) {
         input.state.toggleMap = false;
-        if (!dialog.active && !inventory.visible) {
+        if (!dialog.active && !anyPanelOpen()) {
             inventory.handleAction('toggleMap');
         }
     }
 
-    // Handle E interaction
-    const inRange = npc.isPlayerInRange(player);
+    // Handle E interaction — first interactable in range wins
+    const target = interactables.find(o => o.isPlayerInRange(player));
     if (input.state.interact) {
         input.state.interact = false;
         if (dialog.active) {
             dialog.advance();
-        } else if (inRange) {
-            const nodes = npc.getDialogNodes();
-            if (nodes) dialog.open(nodes, npc, 0);
+        } else if (anyPanelOpen()) {
+            closePanels();
+        } else if (target) {
+            target.onInteract();
         }
     }
 
@@ -288,8 +357,9 @@ function frame(now) {
     }
 
     // Show/hide interaction icon
-    if (inRange && !dialog.active) {
+    if (target && !dialog.active && !anyPanelOpen()) {
         interactIcon.style.display = '';
+        interactIconGlyph.textContent = target.interactIcon;
     } else {
         interactIcon.style.display = 'none';
     }
@@ -305,7 +375,7 @@ function frame(now) {
     if (interactIcon.style.display !== 'none') {
         const cx = entityCanvas.clientWidth / 2;
         const cy = entityCanvas.clientHeight / 2;
-        const pos = npc.getIconScreenPos(camera, cx, cy);
+        const pos = target.getIconScreenPos(camera, cx, cy);
         interactIcon.style.left = pos.x + 'px';
         interactIcon.style.top = pos.y + 'px';
     }
