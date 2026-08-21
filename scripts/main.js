@@ -55,13 +55,14 @@ async function loadJSON(src) {
 const input = new KeyboardInputDevice();
 input.connect();
 
-const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap] = await Promise.all([
+const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, haraldDialog] = await Promise.all([
     loadImage('assets/sprites/entities/player-4x2.png'),
     loadImage('assets/sprites/environment/overworld-4x4.png'),
     loadImage('assets/sprites/environment/oaktree-2x1.png'),
     loadJSON('assets/tiles.json'),
     loadJSON('assets/props.json'),
     loadJSON('assets/maps/overworld.json'),
+    loadJSON('assets/interactions/dialogs/overworld-harald.json'),
 ]);
 
 const TILE_SIZE = 16;
@@ -82,10 +83,7 @@ const atlases = {
 
 const player = new Player(playerSheet);
 
-const npc = new NPC(playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, [
-    'Hello!',
-    'World!',
-]);
+const npc = new NPC(playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, haraldDialog, 'on the road');
 
 const gameContainer = document.getElementById('game-container');
 const dialog = new Dialog(gameContainer);
@@ -221,12 +219,20 @@ function frame(now) {
     // Handle E interaction
     const inRange = npc.isPlayerInRange(player);
     if (input.state.interact) {
-        input.state.interact = false; // consume edge-triggered press
+        input.state.interact = false;
         if (dialog.active) {
             dialog.advance();
         } else if (inRange) {
-            dialog.open(npc.dialog);
+            const nodes = npc.getDialogNodes();
+            if (nodes) dialog.open(nodes, npc, 0);
         }
+    }
+
+    // Handle number key option selection
+    if (input.state.optionSelect >= 0) {
+        const idx = input.state.optionSelect;
+        input.state.optionSelect = -1;
+        if (dialog.active) dialog.selectOption(idx);
     }
 
     // Show/hide interaction icon

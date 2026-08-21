@@ -71,6 +71,41 @@ canvas {
     margin: 0;
 }
 
+#dialog-speaker {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8bf;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#dialog-speaker:empty {
+    display: none;
+}
+
+#dialog-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dialog-option {
+    padding: 8px 12px;
+    border: 1px solid #556;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #cdf;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.dialog-option:hover {
+    background: rgba(100, 140, 255, 0.15);
+    border-color: #8bf;
+}
+
 #dialog-hint {
     position: absolute;
     bottom: 8px;

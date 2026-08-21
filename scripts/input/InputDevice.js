@@ -8,6 +8,7 @@ export class InputDevice {
             up: false,
             down: false,
             interact: false,
+            optionSelect: -1, // -1 = none, 0..N = option index
         };
     }
 
