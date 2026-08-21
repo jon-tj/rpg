@@ -6,12 +6,14 @@ const DEFAULT_KEY_MAP = {
     ArrowUp: 'up', KeyW: 'up',
     ArrowDown: 'down', KeyS: 'down',
     KeyE: 'interact',
+    KeyI: 'inventory',
+    KeyM: 'toggleMap',
     Digit1: 'option0', Digit2: 'option1', Digit3: 'option2',
     Digit4: 'option3', Digit5: 'option4',
 };
 
 // Actions that fire once on keydown rather than being held.
-const EDGE_ACTIONS = new Set(['interact', 'option0', 'option1', 'option2', 'option3', 'option4']);
+const EDGE_ACTIONS = new Set(['interact', 'inventory', 'toggleMap', 'option0', 'option1', 'option2', 'option3', 'option4']);
 
 export class KeyboardInputDevice extends InputDevice {
     constructor(keyMap = DEFAULT_KEY_MAP, target = window) {

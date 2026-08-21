@@ -9,6 +9,8 @@ export class InputDevice {
             down: false,
             interact: false,
             optionSelect: -1, // -1 = none, 0..N = option index
+            inventory: false,
+            toggleMap: false,
         };
     }
 

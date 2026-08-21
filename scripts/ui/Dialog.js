@@ -7,6 +7,7 @@ export class Dialog {
         this.phase = 'text';      // 'text' | 'options'
         this.npc = null;          // the NPC we're talking to
         this.filteredOptions = [];
+        this.onReceive = null;    // callback(itemId, quantity) for received items
 
         // Build DOM
         this.overlay = document.createElement('div');
@@ -111,6 +112,14 @@ export class Dialog {
         this.phase = 'text';
         this.optionsContainer.innerHTML = '';
         this.optionsContainer.style.display = 'none';
+
+        // Deliver received items when entering the node
+        if (this.currentNode.receive && this.onReceive) {
+            for (const r of this.currentNode.receive) {
+                this.onReceive(r.item, r.quantity ?? 1);
+            }
+        }
+
         this._renderText();
     }
 

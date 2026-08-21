@@ -6,6 +6,7 @@ import { Random } from './Random.js';
 import { Spritesheet } from './animation/Spritesheet.js';
 import { KeyboardInputDevice } from './input/KeyboardInputDevice.js';
 import { Dialog } from './ui/Dialog.js';
+import { Inventory } from './ui/Inventory.js';
 import { rasterize } from './world/Patches.js';
 
 console.log(
@@ -55,7 +56,7 @@ async function loadJSON(src) {
 const input = new KeyboardInputDevice();
 input.connect();
 
-const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, haraldDialog] = await Promise.all([
+const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, haraldDialog, itemDefs] = await Promise.all([
     loadImage('assets/sprites/entities/player-4x2.png'),
     loadImage('assets/sprites/environment/overworld-4x4.png'),
     loadImage('assets/sprites/environment/oaktree-2x1.png'),
@@ -63,6 +64,7 @@ const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, hara
     loadJSON('assets/props.json'),
     loadJSON('assets/maps/overworld.json'),
     loadJSON('assets/interactions/dialogs/overworld-harald.json'),
+    loadJSON('assets/items.json'),
 ]);
 
 const TILE_SIZE = 16;
@@ -88,6 +90,24 @@ const npc = new NPC(playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, haraldDialog
 const gameContainer = document.getElementById('game-container');
 const dialog = new Dialog(gameContainer);
 const interactIcon = document.getElementById('interact-icon');
+
+// Item use-action handlers
+const useActions = {
+    toggleMap() {
+        console.log('TODO: toggle map');
+    },
+};
+
+const inventory = new Inventory(gameContainer, itemDefs, 4, 4, (itemId, action) => {
+    const handler = useActions[action];
+    if (handler) handler(itemId);
+    else console.warn(`No handler for useAction: ${action}`);
+});
+
+// Restore inventory from saved state
+if (gameState.inventory) {
+    inventory.deserialize(gameState.inventory);
+}
 
 // Build the ground patch from the map + tile definitions.
 // Variations are sampled deterministically at load time using Random.detUniform,
@@ -162,6 +182,17 @@ function buildProps(map, defs, rng) {
 
 const props = buildProps(worldMap, propDefs, random);
 
+// Connect dialog item receiving to inventory
+dialog.onReceive = (itemId, quantity) => {
+    inventory.addItem(itemId, quantity);
+    saveState();
+};
+
+function saveState() {
+    gameState.inventory = inventory.serialize();
+    store.saveGameState();
+}
+
 // Dynamic entities are re-sorted each frame. Kept small on purpose — grow as needed.
 const entities = [player, npc];
 
@@ -215,6 +246,23 @@ function frame(now) {
 
     player.update(dt, input.state);
     npc.update(dt);
+
+    // Handle I — toggle inventory
+    if (input.state.inventory) {
+        input.state.inventory = false;
+        if (!dialog.active) {
+            inventory.toggle();
+            if (!inventory.visible) saveState();
+        }
+    }
+
+    // Handle M — toggle map, gated on holding an item that grants the action
+    if (input.state.toggleMap) {
+        input.state.toggleMap = false;
+        if (!dialog.active && !inventory.visible) {
+            inventory.handleAction('toggleMap');
+        }
+    }
 
     // Handle E interaction
     const inRange = npc.isPlayerInRange(player);

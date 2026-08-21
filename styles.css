@@ -114,3 +114,79 @@ canvas {
     color: #8bf;
     opacity: 0.8;
 }
+
+/* ── Inventory ── */
+#inventory-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+#inventory-panel {
+    background: rgba(10, 10, 30, 0.94);
+    border: 2px solid #8bf;
+    border-radius: 8px;
+    padding: 16px 20px 20px;
+    user-select: none;
+}
+
+#inventory-title {
+    text-align: center;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #8bf;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+#inventory-grid {
+    display: grid;
+    gap: 4px;
+}
+
+.inventory-slot {
+    width: 64px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid #445;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.inventory-slot:hover {
+    border-color: #8bf;
+}
+
+.inventory-slot.has-item {
+    background: rgba(100, 140, 255, 0.08);
+}
+
+.inventory-slot.dragging {
+    opacity: 0.4;
+}
+
+.slot-icon {
+    font-size: 32px;
+    color: #cdf;
+}
+
+.slot-qty {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 3px #000;
+}
