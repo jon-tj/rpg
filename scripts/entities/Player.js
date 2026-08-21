@@ -21,6 +21,11 @@ export class Player {
         this.frameId = this.animations.idle.startIndex;
     }
 
+    /** Hot-swap the spritesheet (must share the same frame layout). */
+    setSpritesheet(spritesheet) {
+        this.spritesheet = spritesheet;
+    }
+
     setState(state) {
         if (this.state !== state) {
             this.state = state;

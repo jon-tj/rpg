@@ -1,0 +1,39 @@
+{
+    "on the road": [
+        {
+            "id": 0,
+            "speaker": "Harald",
+            "text": [
+                "I see you are on the road again. I hope you are well prepared for the journey ahead.",
+                "The road can be dangerous, so make sure you have enough supplies and stay alert.",
+                "Take this map with you. It will help you navigate through the terrain and find your way to your destination."
+            ],
+            "receive": [
+                {
+                    "item": "map",
+                    "quantity": 1
+                }
+            ],
+            "next": null,
+            "options": [
+                {
+                    "text": "Thank you, Harald. I will be careful.",
+                    "next": null,
+                    "karma": {
+                        "Harald": 1
+                    },
+                    "karmaRequirements": {
+                        "min": 0
+                    }
+                },
+                {
+                    "text": "I appreciate your advice, but I think I can handle it on my own.",
+                    "next": null,
+                    "karma": {
+                        "Harald": -1
+                    }
+                }
+            ]
+        }
+    ]
+}

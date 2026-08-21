@@ -5,7 +5,11 @@ const DEFAULT_KEY_MAP = {
     ArrowRight: 'right', KeyD: 'right',
     ArrowUp: 'up', KeyW: 'up',
     ArrowDown: 'down', KeyS: 'down',
+    KeyE: 'interact',
 };
+
+// Actions that fire once on keydown rather than being held.
+const EDGE_ACTIONS = new Set(['interact']);
 
 export class KeyboardInputDevice extends InputDevice {
     constructor(keyMap = DEFAULT_KEY_MAP, target = window) {
@@ -15,11 +19,18 @@ export class KeyboardInputDevice extends InputDevice {
 
         this._onKeyDown = (e) => {
             const action = this.keyMap[e.code];
-            if (action) this.state[action] = true;
+            if (action) {
+                if (EDGE_ACTIONS.has(action)) {
+                    // Edge-triggered: set true on press, consumed by game loop.
+                    if (!e.repeat) this.state[action] = true;
+                } else {
+                    this.state[action] = true;
+                }
+            }
         };
         this._onKeyUp = (e) => {
             const action = this.keyMap[e.code];
-            if (action) this.state[action] = false;
+            if (action && !EDGE_ACTIONS.has(action)) this.state[action] = false;
         };
     }
 

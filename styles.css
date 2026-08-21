@@ -18,3 +18,64 @@ canvas {
     right: 0;
     image-rendering: pixelated;
 }
+
+/* Interaction icon floating above NPC */
+.interact-icon {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    animation: icon-bob 1s ease-in-out infinite;
+    z-index: 10;
+}
+
+.interact-icon .material-icons {
+    font-size: 28px;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0,0,0,0.7);
+}
+
+@keyframes icon-bob {
+    0%, 100% { transform: translate(-50%, -100%); }
+    50% { transform: translate(-50%, calc(-100% - 6px)); }
+}
+
+/* Dialog overlay & box */
+#dialog-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    padding: 32px;
+    pointer-events: none;
+}
+
+#dialog-box {
+    background: rgba(10, 10, 30, 0.92);
+    border: 2px solid #8bf;
+    border-radius: 8px;
+    padding: 20px 28px;
+    max-width: 520px;
+    width: 100%;
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 18px;
+    line-height: 1.5;
+    position: relative;
+    pointer-events: auto;
+}
+
+#dialog-text {
+    margin: 0;
+}
+
+#dialog-hint {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-size: 12px;
+    color: #8bf;
+    opacity: 0.8;
+}

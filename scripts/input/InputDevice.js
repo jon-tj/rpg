@@ -7,6 +7,7 @@ export class InputDevice {
             right: false,
             up: false,
             down: false,
+            interact: false,
         };
     }
 

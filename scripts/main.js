@@ -1,9 +1,11 @@
 import { Renderer } from './Renderer.js';
 import { Player } from './entities/Player.js';
+import { NPC } from './entities/NPC.js';
 import { Store } from './data/Store.js';
 import { Random } from './Random.js';
 import { Spritesheet } from './animation/Spritesheet.js';
 import { KeyboardInputDevice } from './input/KeyboardInputDevice.js';
+import { Dialog } from './ui/Dialog.js';
 import { rasterize } from './world/Patches.js';
 
 console.log(
@@ -80,6 +82,15 @@ const atlases = {
 
 const player = new Player(playerSheet);
 
+const npc = new NPC(playerSheet, 3 * TILE_SCREEN, -2 * TILE_SCREEN, [
+    'Hello!',
+    'World!',
+]);
+
+const gameContainer = document.getElementById('game-container');
+const dialog = new Dialog(gameContainer);
+const interactIcon = document.getElementById('interact-icon');
+
 // Build the ground patch from the map + tile definitions.
 // Variations are sampled deterministically at load time using Random.detUniform,
 // so a given seed always produces the same layout but tiles don't flicker.
@@ -154,7 +165,7 @@ function buildProps(map, defs, rng) {
 const props = buildProps(worldMap, propDefs, random);
 
 // Dynamic entities are re-sorted each frame. Kept small on purpose — grow as needed.
-const entities = [player];
+const entities = [player, npc];
 
 const camera = { x: 0, y: 0 };
 
@@ -205,12 +216,41 @@ function frame(now) {
     last = now;
 
     player.update(dt, input.state);
+    npc.update(dt);
+
+    // Handle E interaction
+    const inRange = npc.isPlayerInRange(player);
+    if (input.state.interact) {
+        input.state.interact = false; // consume edge-triggered press
+        if (dialog.active) {
+            dialog.advance();
+        } else if (inRange) {
+            dialog.open(npc.dialog);
+        }
+    }
+
+    // Show/hide interaction icon
+    if (inRange && !dialog.active) {
+        interactIcon.style.display = '';
+    } else {
+        interactIcon.style.display = 'none';
+    }
+
     camera.x = player.worldX;
     camera.y = player.worldY;
 
     // Player is fixed at screen center; world scrolls opposite.
     drawWorld();
     drawEntities();
+
+    // Position interaction icon in screen space
+    if (interactIcon.style.display !== 'none') {
+        const cx = entityCanvas.clientWidth / 2;
+        const cy = entityCanvas.clientHeight / 2;
+        const pos = npc.getIconScreenPos(camera, cx, cy);
+        interactIcon.style.left = pos.x + 'px';
+        interactIcon.style.top = pos.y + 'px';
+    }
 
     requestAnimationFrame(frame);
 }
