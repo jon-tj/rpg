@@ -1,0 +1,29 @@
+{
+    "slime": {
+        "name": "Slime",
+        "art": "slime",
+        "hp": 30,
+        "speed": 0.11,
+        "damage": 10,
+        "aggroRadius": 320,
+        "leashRadius": 700,
+        "radius": 26,
+        "scale": 4,
+        "bodyHeight": 40,
+        "footPadding": 1
+    },
+    "golem": {
+        "name": "Stone Warden",
+        "art": "golem",
+        "hp": 400,
+        "speed": 0.08,
+        "chargeSpeed": 0.6,
+        "damage": 15,
+        "chargeDamage": 25,
+        "projectileSpeed": 0.22,
+        "projectileDamage": 12,
+        "radius": 42,
+        "scale": 6,
+        "bodyHeight": 84
+    }
+}

@@ -10,6 +10,17 @@ export class Renderer {
             this.resizeCanvases();
         });
         this.resizeCanvases();
+        this.watchPixelRatio();
+    }
+
+    // Moving the window to a monitor with a different scale factor changes
+    // devicePixelRatio without a resize event, so listen for that too.
+    watchPixelRatio() {
+        const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+        mq.addEventListener('change', () => {
+            this.resizeCanvases();
+            this.watchPixelRatio();
+        }, { once: true });
     }
 
     resizeCanvases() {

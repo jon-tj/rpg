@@ -9,6 +9,9 @@ import { KeyboardInputDevice } from './input/KeyboardInputDevice.js';
 import { Dialog } from './ui/Dialog.js';
 import { Inventory } from './ui/Inventory.js';
 import { rasterize } from './world/Patches.js';
+import { Hud } from './ui/Hud.js';
+import { CombatSystem } from './combat/CombatSystem.js';
+import { buildCreatureArt } from './art/creatures.js';
 
 console.log(
     '\n ------------------------',
@@ -57,7 +60,7 @@ async function loadJSON(src) {
 const input = new KeyboardInputDevice();
 input.connect();
 
-const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, haraldDialog, itemDefs] = await Promise.all([
+const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, haraldDialog, itemDefs, monsterDefs] = await Promise.all([
     loadImage('assets/sprites/entities/player-4x2.png'),
     loadImage('assets/sprites/environment/overworld-4x4.png'),
     loadImage('assets/sprites/environment/oaktree-2x1.png'),
@@ -66,6 +69,7 @@ const [playerImage, overworldImage, oakImage, tileDefs, propDefs, worldMap, hara
     loadJSON('assets/maps/overworld.json'),
     loadJSON('assets/interactions/dialogs/overworld-harald.json'),
     loadJSON('assets/items.json'),
+    loadJSON('assets/monsters.json'),
 ]);
 
 const TILE_SIZE = 16;
@@ -215,6 +219,20 @@ function buildChest(mapEntry, def, sheet, tx, ty, worldX, footY) {
 const chests = [];
 const props = buildProps(worldMap, propDefs, random, chests);
 
+const hud = new Hud(gameContainer);
+gameState.combat ??= {};
+const combat = new CombatSystem({
+    map: worldMap,
+    monsterDefs,
+    art: buildCreatureArt(),
+    tileScreen: TILE_SCREEN,
+    state: gameState.combat,
+    inventory,
+    hud,
+    spawnPoint: { x: 0, y: 0 },
+    onProgress: () => saveState(),
+});
+
 // Connect dialog item receiving to inventory
 dialog.onReceive = (itemId, quantity) => {
     inventory.addItem(itemId, quantity);
@@ -233,7 +251,7 @@ function saveState() {
 const entities = [player, npc, ...chests];
 
 // Everything the player can trigger with E, checked nearest-first each frame.
-const interactables = [npc, ...chests];
+const interactables = [npc, ...chests, ...combat.interactables()];
 
 npc.onInteract = () => {
     const nodes = npc.getDialogNodes();
@@ -264,11 +282,16 @@ function closePanels() {
 
 const camera = { x: 0, y: 0 };
 
+// Screen centre in CSS pixels. Measured on the container (not the canvas) so
+// it always matches the visible viewport regardless of devicePixelRatio.
+function screenCenter() {
+    return { cx: gameContainer.clientWidth / 2, cy: gameContainer.clientHeight / 2 };
+}
+
 function drawWorld() {
     prepareCtx(worldCtx);
-    const cx = worldCanvas.clientWidth / 2;
-    const cy = worldCanvas.clientHeight / 2;
-    worldCtx.clearRect(0, 0, worldCanvas.clientWidth, worldCanvas.clientHeight);
+    const { cx, cy } = screenCenter();
+    worldCtx.clearRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
     for (const t of groundPatch) {
         const sx = Math.round(t.tx * TILE_SCREEN - camera.x + cx);
         const sy = Math.round(t.ty * TILE_SCREEN - camera.y + cy);
@@ -287,22 +310,24 @@ function drawProp(prop, cx, cy) {
 
 function drawEntities() {
     prepareCtx(entityCtx);
-    entityCtx.clearRect(0, 0, entityCanvas.clientWidth, entityCanvas.clientHeight);
+    entityCtx.clearRect(0, 0, gameContainer.clientWidth, gameContainer.clientHeight);
 
-    const cx = entityCanvas.clientWidth / 2;
-    const cy = entityCanvas.clientHeight / 2;
+    const { cx, cy } = screenCenter();
 
     // Sort just the small dynamic-entity list, then merge with the pre-sorted
     // static props. O(N) per frame in total (N = props + entities visible).
-    entities.sort((a, b) => a.footY - b.footY);
+    const dynamic = [...entities, ...combat.drawables()];
+    dynamic.sort((a, b) => a.footY - b.footY);
 
     let i = 0, j = 0;
-    while (i < props.length && j < entities.length) {
-        if (props[i].footY <= entities[j].footY) drawProp(props[i++], cx, cy);
-        else entities[j++].draw(entityCtx, camera, cx, cy);
+    while (i < props.length && j < dynamic.length) {
+        if (props[i].footY <= dynamic[j].footY) drawProp(props[i++], cx, cy);
+        else dynamic[j++].draw(entityCtx, camera, cx, cy);
     }
     while (i < props.length)   drawProp(props[i++], cx, cy);
-    while (j < entities.length) entities[j++].draw(entityCtx, camera, cx, cy);
+    while (j < dynamic.length) dynamic[j++].draw(entityCtx, camera, cx, cy);
+
+    combat.drawOverlay(entityCtx, camera, cx, cy, player);
 }
 
 let last = performance.now();
@@ -312,6 +337,10 @@ function frame(now) {
 
     player.update(dt, input.state);
     npc.update(dt);
+
+    // The world holds still while talking or managing items.
+    if (!dialog.active && !anyPanelOpen()) combat.update(dt, input.state, player);
+    else input.state.attack = false;
 
     // Handle I — toggle inventory (also dismisses an open container)
     if (input.state.inventory) {
@@ -364,8 +393,9 @@ function frame(now) {
         interactIcon.style.display = 'none';
     }
 
-    camera.x = player.worldX;
-    camera.y = player.worldY;
+    const shake = combat.shakeOffset();
+    camera.x = player.worldX + shake.x;
+    camera.y = player.worldY + shake.y;
 
     // Player is fixed at screen center; world scrolls opposite.
     drawWorld();
@@ -373,8 +403,7 @@ function frame(now) {
 
     // Position interaction icon in screen space
     if (interactIcon.style.display !== 'none') {
-        const cx = entityCanvas.clientWidth / 2;
-        const cy = entityCanvas.clientHeight / 2;
+        const { cx, cy } = screenCenter();
         const pos = target.getIconScreenPos(camera, cx, cy);
         interactIcon.style.left = pos.x + 'px';
         interactIcon.style.top = pos.y + 'px';
