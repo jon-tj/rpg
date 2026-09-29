@@ -24,8 +24,25 @@
           ],
           "thickness": 3 },
 
-        { "type": "rect", "tile": "wood",        "points": [[8, -3], [13, -1]] }
+        { "type": "rect", "tile": "wood",        "points": [[8, -3], [13, -1]] },
+
+        { "type": "line", "tile": "cobblestone", "points": [[37, -15], [37, -17]], "thickness": 2 },
+        { "type": "rect", "tile": "cobblestone", "points": [[33, -22], [41, -17]] }
     ],
+    "encounters": [
+        { "id": "road", "monster": "slime",
+          "points": [[19, -2], [21, -8], [25, -5], [27, -11], [30, -7]],
+          "reward": { "item": "altar_token", "quantity": 1,
+                      "message": "The last slime drops a Warden's Sigil. Take it to the altar in the north." } }
+    ],
+    "altar": {
+        "point": [37.5, -19],
+        "requires": "altar_token",
+        "boss": "golem",
+        "bossOffset": [0, -2.5],
+        "reward": { "item": "warden_core", "quantity": 1,
+                    "message": "The Stone Warden crumbles! You obtained the Warden's Core." }
+    },
     "props": [
         { "type": "chest", "points": [[37, -10]],
           "contains": [{ "item": "sword", "quantity": 1 }] },

@@ -11,5 +11,17 @@
         "icon": "hardware",
         "description": "A well-worn blade.",
         "maxCarried": 1
+    },
+    "altar_token": {
+        "name": "Warden's Sigil",
+        "icon": "token",
+        "description": "Pulses faintly. Offer it at the altar north of the next town.",
+        "maxCarried": 1
+    },
+    "warden_core": {
+        "name": "Warden's Core",
+        "icon": "diamond",
+        "description": "The still-warm heart of the Stone Warden.",
+        "maxCarried": 1
     }
 }

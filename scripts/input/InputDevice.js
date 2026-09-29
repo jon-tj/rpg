@@ -11,6 +11,7 @@ export class InputDevice {
             optionSelect: -1, // -1 = none, 0..N = option index
             inventory: false,
             toggleMap: false,
+            attack: false,
         };
     }
 
